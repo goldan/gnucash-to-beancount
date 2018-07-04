@@ -12,7 +12,7 @@ __license__ = "GNU GPLv2"
 
 def meta_from(obj, fields):
     """Build a meta dict from fields that have values."""
-    return {k: v
+    return {k: v.replace('"', "'")  # double quotes are disallowed
             for k in fields.split(' ')
             for v in (getattr(obj, k),)
             if v}
