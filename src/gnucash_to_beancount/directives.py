@@ -1,6 +1,8 @@
 """Factories to transform Gnucash entities into Beancount directives.
 """
 import decimal
+import re
+
 from beancount.core import data
 from beancount.core.account_types import DEFAULT_ACCOUNT_TYPES as ACCOUNT_TYPES
 
@@ -43,23 +45,25 @@ def _get_account_types_map(acc_types):
 
 ACCOUNT_TYPES_MAP = _get_account_types_map(ACCOUNT_TYPES)
 ACCOUNT_SEP = ':'
+# only alphanumeric (including non-ascii), underscores and ACCOUNT_SEP are allowed in account names
+INVALID_ACCOUNT_CHARS = re.compile(r'[^\w_%s]' % ACCOUNT_SEP)
 
 
 def account_name(account):
     """Returns a valid Beancount account name for a Gnucash account."""
 
-    name = account.fullname
-    name = name.replace(' ', '-')  # Beancount does not allow whitespace.
+    name = re.sub(INVALID_ACCOUNT_CHARS, '-', account.fullname)
 
     # If the Gnucash account is not under a valid Beancount account root
     # we must append it to the proper branch using the built account map.
     acc_type = ACCOUNT_TYPES_MAP[account.type]
-    head, _, tail = name.partition(ACCOUNT_SEP)
+    parts = name.split(ACCOUNT_SEP)
+    if parts[0] != acc_type:
+        parts.insert(0, acc_type)
+    # Filter empty parts and uppercase first character, as beancount requires
+    parts = (p[0].upper() + p[1:] for p in parts if p)
 
-    if head != acc_type:
-        # Filter empty parts
-        parts = (p for p in (acc_type, head, tail) if p)
-        name = ACCOUNT_SEP.join(parts)
+    name = ACCOUNT_SEP.join(parts)
 
     return name
 
