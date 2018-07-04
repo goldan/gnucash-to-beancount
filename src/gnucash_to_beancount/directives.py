@@ -1,5 +1,6 @@
 """Factories to transform Gnucash entities into Beancount directives.
 """
+import decimal
 from beancount.core import data
 from beancount.core.account_types import DEFAULT_ACCOUNT_TYPES as ACCOUNT_TYPES
 
@@ -107,7 +108,11 @@ def price_for(split):
     if acc_comm == txn_comm:
         return None
 
-    number = abs(split.value / split.quantity)
+    try:
+        number = abs(split.value / split.quantity)
+    except (decimal.DivisionByZero, decimal.InvalidOperation):  # invalid operation occurs when 0/0
+        if split.quantity.is_zero():
+            number = decimal.Decimal('0')
     currency = txn_comm.mnemonic
 
     return data.Amount(number, currency)
